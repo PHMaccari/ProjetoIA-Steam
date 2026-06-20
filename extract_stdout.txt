@@ -1,0 +1,102 @@
+﻿Paras: 101 Chars: 5275
+
+PROJETO FINAL - Atividade Baseada em Problema
+Inteligência Artificial Aplicada
+Sistemas Inteligentes com Interface de Simulação e Apoio à Decisão
+Disciplina de Inteligência Artificial
+
+1. Visão Geral do Projeto
+Neste projeto, cada grupo desenvolverá um sistema inteligente funcional aplicado a um problema realista e complexo, utilizando pelo menos uma técnica de Inteligência Artificial. O objetivo não é apenas implementar um algoritmo, mas construir uma solução completa: com dados, processamento inteligente, saída interpretável e interface interativa para demonstração.Todos os grupos deverão atender aos mesmos requisitos estruturais, independentemente do tema ou da técnica de IA escolhida. 
+
+Premissa fundamental do projeto
+Todo projeto deve demonstrar o fluxo completo:
+   Entrada de dados    Processamento com IA  Resultado    Explicação da decisão
+
+2. Técnicas de IA Permitidas
+O grupo deve escolher pelo menos uma das técnicas abaixo. O uso combinado é encorajado e avaliado positivamente.
+
+Técnica
+Lógica Fuzzy
+Algoritmo Genético
+Machine Learning
+Modelos Generativos (via API) utilizando RAG, MCP, geração de vídeos ou imagens
+
+Combinações de abordagens podem ser utilizadas.
+
+3. Requisitos Obrigatórios
+3.1 Definição do problema
+O grupo deve descrever claramente:
+qual problema será resolvido e por que é relevante;
+quem usaria a solução (persona do usuário);
+qual decisão o sistema apoia;
+quais são os limites e suposições da solução.
+
+3.2 Dados
+O projeto deve usar dados reais, públicos, simulados ou construídos pelo grupo. Os dados podem ser obtidos de fontes abertas (Kaggle, IBGE, UCI, dados.gov.br) ou gerados sinteticamente com critério técnico.
+
+Técnica utilizada
+Volume mínimo de dados
+Lógica Fuzzy
+No mínimo 8 regras com com pelo menos 3 variáveis de entrada e 1 da saída
+Algoritmo Genético
+1 Função Fitness e 3 restrições do problema com parâmetros bem definidos e claros
+Machine Learning
+300 registros com variável-alvo definida (classificação, regressão ou clusterização).
+Modelos generativos 
+10 documentos, chamados ou textos representativos para aplicação de RAG ou MCP, para vídeos e imagens validar com o professor. 
+Combinação de técnicas
+Atender ao mínimo da técnica principal
+
+Orientações sobre dados simulados
+Dados simulados são aceitos, desde que:
+   Reflitam a distribuição esperada do problema real (cenários normais, de atenção e críticos);
+   Sejam documentados: descreva como foram gerados e qual lógica foi usada;
+   Não sejam triviais: evite dados completamente uniformes ou sem variação.
+
+3.3 Interface obrigatória
+Todo projeto deve ter uma interface funcional para uso ou simulação. A interface não precisa ser visualmente sofisticada, mas deve funcionar de forma clara.Tecnologias aceitas:
+Streamlit
+Gradio
+Flask ou FastAPI com HTML
+Tkinter ou PyQt
+Tecnologias web ou desktop para desenvolvimento de interfaces. 
+Outra tecnologia aprovada previamente pelo professor
+3.4 Entregáveis
+Documento do projeto (PDF ou Word), contendo: tema, problema, objetivo, justificativa da técnica de IA e resultados.
+Código-fonte completo (repositório Git ou .zip), com README explicando como executar.
+Demonstraçãona apresentação.
+Apresentação final (slides) na data do plano de ensino: problema, solução, técnica, resultados, limitações e melhorias futuras.
+5. Orientações Práticas
+5.1 Organização dos grupos
+Grupos de 4 a 5 integrantes 
+Cada integrante deve ter responsabilidades e entendimento total do projeto.
+
+5.2 Escolha do tema
+Cada grupo escolhe um problema e um tema para aplicar.
+A escolha deve ser validada com o professor 
+6. O que não será aceito
+
+Critérios de invalidação parcial ou total
+?  Projeto sem interface funcional (componente obrigatório).
+?  Código que não executa na apresentação.
+?  Dados inventados sem critério (ex.: todos os valores iguais ou sem variação real).
+?  Técnica de IA apenas 'decorativa', sem influência real no resultado apresentado.
+?  Integrante que não consegue explicar o código na apresentação.
+?  Projeto apenas conceitual, sem implementação funcional.
+
+7. Observações Importantes
+
+7.1 Uso de Inteligência Artificial no desenvolvimento
+O uso de ferramentas de IA generativa - como ChatGPT, GitHub Copilot, Claude, Gemini ou similares - é permitido como apoio ao desenvolvimento do projeto. Essas ferramentas podem auxiliar na geração de código, estruturação de ideias, revisão de lógica e produção de textos.No entanto, durante a apresentação final, todos os integrantes do grupo estarão sujeitos a questionamentos técnicos sobre:
+o código implementado e as decisões de desenvolvimento;
+a técnica de IA escolhida e seus fundamentos;
+os dados utilizados e o pré-processamento aplicado;
+os resultados obtidos e suas limitações;
+a interface desenvolvida e o fluxo de funcionamento do sistema.
+
+7.2 Uso de trabalhos de semestres anteriores
+É terminantemente proibido reutilizar, adaptar ou submeter como próprio qualquer projeto desenvolvido em semestres anteriores, seja da disciplina de Inteligência Artificial ou de qualquer outra disciplina.
+Essa regra se aplica a:
+trabalhos do próprio aluno entregues em períodos anteriores;
+trabalhos de outros grupos outurmascompartilhados informalmente;
+projetos disponíveis publicamente em repositórios como GitHub, se originados desta disciplina.

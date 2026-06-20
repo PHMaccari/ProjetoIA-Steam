@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.parquet
+!artifacts/.gitkeep
+!models/.gitkeep
+steam_dataset_2025_csv/*.csv
+steam_dataset/*.csv

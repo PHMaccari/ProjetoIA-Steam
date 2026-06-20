@@ -1,0 +1,83 @@
+{
+  "feature_columns": [
+    "price_usd",
+    "is_free",
+    "num_languages",
+    "achievement_count",
+    "release_year",
+    "release_month",
+    "mat_supports_windows",
+    "mat_supports_mac",
+    "mat_supports_linux",
+    "publisher_tier",
+    "has_controller",
+    "num_categories",
+    "genre_action",
+    "genre_adventure",
+    "genre_indie",
+    "genre_rpg",
+    "genre_strategy",
+    "genre_simulation",
+    "genre_casual",
+    "genre_racing",
+    "genre_sports",
+    "cat_multiplayer",
+    "cat_singleplayer",
+    "cat_achievements",
+    "cat_coop"
+  ],
+  "success_labels": {
+    "0": "Baixo potencial",
+    "1": "Médio potencial",
+    "2": "Alto potencial"
+  },
+  "metrics": {
+    "accuracy": 0.561,
+    "f1_macro": 0.5607527524458343,
+    "train_size": 24000,
+    "test_size": 6000,
+    "feature_count": 25,
+    "top_features": [
+      [
+        "price_usd",
+        0.1772426788464231
+      ],
+      [
+        "publisher_tier",
+        0.16275472661958007
+      ],
+      [
+        "release_year",
+        0.09834603244349414
+      ],
+      [
+        "is_free",
+        0.09571484928124431
+      ],
+      [
+        "achievement_count",
+        0.08808964072927289
+      ],
+      [
+        "num_languages",
+        0.07669899786963193
+      ],
+      [
+        "num_categories",
+        0.07309934665861266
+      ],
+      [
+        "release_month",
+        0.04581678587957619
+      ],
+      [
+        "cat_achievements",
+        0.0206242118333289
+      ],
+      [
+        "genre_casual",
+        0.018410105693425976
+      ]
+    ]
+  }
+}
