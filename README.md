@@ -77,6 +77,7 @@ python -m src.train
 ```
 
 Isso gera:
+
 - `models/random_forest.joblib` — modelo treinado
 - `artifacts/training_dataset.parquet` — dataset processado
 - `artifacts/model_config.json` — configuração e métricas
@@ -108,11 +109,13 @@ cd /c/Users/Pichau/Documents/ProjetoIA
 
 O sucesso é classificado em três níveis com base em `recommendations_total`, dividido em **tercis balanceados** (33% dos jogos em cada classe):
 
-| Classe | Significado |
-|--------|-------------|
+
+| Classe          | Significado                     |
+| --------------- | ------------------------------- |
 | Baixo potencial | Terço inferior de recomendações |
-| Médio potencial | Terço intermediário |
-| Alto potencial | Terço superior |
+| Médio potencial | Terço intermediário             |
+| Alto potencial  | Terço superior                  |
+
 
 ## Features utilizadas
 
@@ -128,12 +131,3 @@ O sucesso é classificado em três níveis com base em `recommendations_total`, 
 - Marketing, qualidade do gameplay e timing de lançamento não estão nos dados
 - Jogos antigos tendem a acumular mais recomendações (viés temporal)
 
-## Equipe sugerida
-
-| Integrante | Responsabilidade |
-|------------|------------------|
-| 1 | Coleta, limpeza e ETL (`src/data.py`) |
-| 2 | Treinamento ML (`src/train.py`) |
-| 3 | Interface Streamlit (`app.py`) |
-| 4 | Gráficos e explicabilidade (`src/predict.py`) |
-| 5 | Documentação, README e slides |
