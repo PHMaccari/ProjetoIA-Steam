@@ -2,6 +2,15 @@
 
 Sistema inteligente para **previsão de sucesso de jogos publicados na Steam**, desenvolvido como Projeto Final da disciplina de Inteligência Artificial Aplicada.
 
+## Aviso
+
+A pasta "steam_dataset" não esta presente no projeto conforme na imagem:
+<img width="675" height="380" alt="image" src="https://github.com/user-attachments/assets/ab9daa75-c1bf-47ca-8c04-c7fe4824263a" />
+Será necessário criar manualmente.
+
+Após criar, entre no site Kaggle (steam games dataset 2025): https://www.kaggle.com/datasets/artermiloff/steam-games-dataset 
+Realize o download do arquivo "games_march2025_cleaned.csv" renomear para "steamds.csv" e adicione a pasta "steam_dataset" 
+
 ## Fluxo do sistema
 
 ```
@@ -130,4 +139,5 @@ O sucesso é classificado em três níveis com base em `recommendations_total`, 
 - A previsão reflete padrões históricos, não garante sucesso futuro
 - Marketing, qualidade do gameplay e timing de lançamento não estão nos dados
 - Jogos antigos tendem a acumular mais recomendações (viés temporal)
+
 
