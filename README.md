@@ -2,6 +2,16 @@
 
 Sistema inteligente para **previsão de sucesso de jogos publicados na Steam**, desenvolvido como Projeto Final da disciplina de Inteligência Artificial Aplicada.
 
+## Aviso
+
+A pasta "steam_dataset" não esta presente no projeto conforme na imagem:
+<img width="727" height="420" alt="{A0E21DDC-A96E-4B83-B00C-1221271990C6}" src="https://github.com/user-attachments/assets/251d5839-78e7-4fb7-9c7a-c55c3e9c0987" />  
+
+Basta acessar o seguinte Link:  
+<a href="https://drive.google.com/drive/folders/1ixBC-RpSDtkAoWpwYph4Ozjt0z0M7m6n?usp=drive_link" target="_blank">steam_dataset link</a>
+  
+Realizar o download do .ZIP, extrair e adicionar na pasta do projeto.
+
 ## Fluxo do sistema
 
 ```
@@ -137,5 +147,6 @@ O sucesso é classificado em três níveis com base em `recommendations_total`, 
 - Marketing, qualidade do gameplay e timing de lançamento não estão nos dados
 - Jogos antigos tendem a acumular mais recomendações (viés temporal)  
   
+
 
 
