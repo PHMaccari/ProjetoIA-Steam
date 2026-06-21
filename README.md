@@ -5,11 +5,11 @@ Sistema inteligente para **previsão de sucesso de jogos publicados na Steam**, 
 ## Aviso
 
 A pasta "steam_dataset" não esta presente no projeto conforme na imagem:
-<img width="727" height="420" alt="{A0E21DDC-A96E-4B83-B00C-1221271990C6}" src="https://github.com/user-attachments/assets/251d5839-78e7-4fb7-9c7a-c55c3e9c0987" />
+<img width="727" height="420" alt="{A0E21DDC-A96E-4B83-B00C-1221271990C6}" src="https://github.com/user-attachments/assets/251d5839-78e7-4fb7-9c7a-c55c3e9c0987" />  
 
-Será necessário criar manualmente.
+Será necessário criar manualmente.  
 
-Após criar, entre no site Kaggle (steam games dataset 2025): https://www.kaggle.com/datasets/artermiloff/steam-games-dataset 
+Após criar, entre no site Kaggle (steam games dataset 2025): https://www.kaggle.com/datasets/artermiloff/steam-games-dataset  
 Realize o download do arquivo "games_march2025_cleaned.csv" renomear para "steamds.csv" e adicione a pasta "steam_dataset" 
 
 ## Fluxo do sistema
