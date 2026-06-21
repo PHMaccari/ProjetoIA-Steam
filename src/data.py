@@ -1,4 +1,12 @@
-"""Carregamento e transformação do dataset Steam (steamds.csv)."""
+"""
+ETL e feature engineering do dataset Steam (steamds.csv).
+
+Responsabilidades:
+- Ler e limpar o CSV único
+- Converter colunas em lista (genres, categories, publishers)
+- Criar features numéricas conhecidas antes do lançamento
+- Definir a variável-alvo (success_class) sem vazamento de dados
+"""
 
 from __future__ import annotations
 
@@ -17,6 +25,7 @@ from src.config import (
 
 
 def _read_steam_csv() -> pd.DataFrame:
+    """Lê apenas as colunas necessárias para reduzir uso de memória."""
     if not DATA_FILE.exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {DATA_FILE}")
     cols = [
@@ -38,6 +47,12 @@ def _read_steam_csv() -> pd.DataFrame:
 
 
 def parse_list_field(value: str | float) -> list[str]:
+    """
+    Converte texto como "['Action', 'Indie']" em lista Python.
+
+    O CSV armazena listas como string; usamos literal_eval em vez de eval
+    por segurança (não executa código arbitrário).
+    """
     if pd.isna(value) or not str(value).strip():
         return []
     text = str(value).strip()
@@ -51,15 +66,18 @@ def parse_list_field(value: str | float) -> list[str]:
 
 
 def count_languages(text: str | float) -> int:
+    """Conta idiomas a partir da lista em supported_languages."""
     return len(parse_list_field(text))
 
 
 def category_has_any(categories: list[str], keywords: tuple[str, ...]) -> int:
+    """Retorna 1 se o jogo possui ao menos uma categoria da lista de keywords."""
     normalized = {c.lower() for c in categories}
     return int(any(keyword.lower() in normalized for keyword in keywords))
 
 
 def build_category_flags(categories_series: pd.Series) -> pd.DataFrame:
+    """Cria flags binárias (0/1) para categorias Steam e conta total de tags."""
     rows = []
     for appid, raw in categories_series.items():
         categories = parse_list_field(raw)
@@ -72,6 +90,7 @@ def build_category_flags(categories_series: pd.Series) -> pd.DataFrame:
 
 
 def build_genre_flags(genres_series: pd.Series) -> pd.DataFrame:
+    """One-hot encoding dos gêneros principais por jogo."""
     rows = []
     for appid, raw in genres_series.items():
         genres = {g.lower() for g in parse_list_field(raw)}
@@ -83,7 +102,12 @@ def build_genre_flags(genres_series: pd.Series) -> pd.DataFrame:
 
 
 def build_publisher_tier(publishers_series: pd.Series, recommendations: pd.Series) -> pd.DataFrame:
-    """Tier do publisher baseado no histórico de recomendações médias."""
+    """
+    Classifica publishers em 3 tiers (0, 1, 2) pela média histórica de recomendações.
+
+    Tier 0 = indie/desconhecido | 1 = médio | 2 = estabelecido/AAA
+    Jogos com múltiplos publishers recebem o tier mais alto entre eles.
+    """
     pub_rows = []
     for appid, raw in publishers_series.items():
         for publisher in parse_list_field(raw):
@@ -104,6 +128,7 @@ def build_publisher_tier(publishers_series: pd.Series, recommendations: pd.Serie
         .agg(["mean", "count"])
         .reset_index()
     )
+    # qcut divide publishers em tercis pela média de recomendações
     pub_stats["publisher_tier"] = pd.qcut(
         pub_stats["mean"].rank(method="first"),
         q=3,
@@ -117,19 +142,26 @@ def build_publisher_tier(publishers_series: pd.Series, recommendations: pd.Serie
 
 
 def create_success_target(recommendations: pd.Series) -> pd.Series:
-    """Classifica sucesso em Baixo (0), Médio (1) e Alto (2) via tercis balanceados."""
+    """
+    Variável-alvo: 3 classes por tercis balanceados de recommendations.
+
+    Usamos rank + qcut porque a distribuição bruta é muito assimétrica
+    (poucos jogos concentram milhões de recomendações).
+    """
     rec = recommendations.fillna(0)
     ranked = rec.rank(method="first")
     return pd.qcut(ranked, q=3, labels=[0, 1, 2]).astype(int)
 
 
 def load_raw_applications() -> pd.DataFrame:
+    """Carrega jogos, filtra por ano e cria colunas base do dataset."""
     apps = _read_steam_csv()
     apps = apps.set_index("appid", drop=False)
 
     apps["release_date"] = pd.to_datetime(apps["release_date"], errors="coerce")
     apps = apps[apps["release_date"].dt.year >= MIN_RELEASE_YEAR].copy()
 
+    # Features derivadas de colunas brutas
     apps["price_usd"] = apps["price"].fillna(0).astype(float)
     apps["is_free"] = (apps["price_usd"] == 0).astype(int)
     apps["num_languages"] = apps["supported_languages"].apply(count_languages)
@@ -145,10 +177,16 @@ def load_raw_applications() -> pd.DataFrame:
 
 
 def build_training_dataset(sample_size: int | None = SAMPLE_SIZE) -> pd.DataFrame:
-    """Monta dataset final para treino a partir do steamds.csv."""
+    """
+    Pipeline completo: limpeza → flags → merge → variável-alvo → amostragem.
+
+    IMPORTANTE: recommendations_total entra só como alvo (success_class),
+    nunca como feature — evita vazamento de dados (data leakage).
+    """
     apps = load_raw_applications()
     apps_indexed = apps.set_index("appid")
 
+    # Feature engineering por tipo de informação
     genre_flags = build_genre_flags(apps_indexed["genres"])
     category_flags = build_category_flags(apps_indexed["categories"])
     publisher_tier = build_publisher_tier(
@@ -170,6 +208,7 @@ def build_training_dataset(sample_size: int | None = SAMPLE_SIZE) -> pd.DataFram
 
     df["success_class"] = create_success_target(df["recommendations_total"])
 
+    # Amostra estratificada: ~10 mil jogos por classe (total ~30 mil)
     if sample_size and len(df) > sample_size:
         per_class = sample_size // 3
         samples = []
@@ -182,7 +221,11 @@ def build_training_dataset(sample_size: int | None = SAMPLE_SIZE) -> pd.DataFram
 
 
 def get_feature_columns(df: pd.DataFrame) -> list[str]:
-    """Colunas usadas como features do modelo (pré-lançamento)."""
+    """
+    Retorna as 25 features usadas pelo modelo.
+
+    Todas representam informações conhecidas ANTES do lançamento.
+    """
     base = [
         "price_usd",
         "is_free",
@@ -208,5 +251,6 @@ def get_feature_columns(df: pd.DataFrame) -> list[str]:
 
 
 def save_processed_dataset(df: pd.DataFrame, path: Path) -> None:
+    """Salva dataset processado para uso no Dashboard Streamlit."""
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)

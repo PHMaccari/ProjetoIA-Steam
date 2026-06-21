@@ -1,4 +1,13 @@
-"""Treinamento do modelo Random Forest."""
+"""
+Treinamento do classificador Random Forest.
+
+Fluxo: carregar dados → separar treino/teste → treinar → avaliar → salvar artefatos
+Arquivos gerados:
+  - models/random_forest.joblib
+  - artifacts/model_config.json
+  - artifacts/training_report.txt
+  - artifacts/training_dataset.parquet
+"""
 
 from __future__ import annotations
 
@@ -16,26 +25,30 @@ from src.data import build_training_dataset, get_feature_columns, save_processed
 
 
 def train_model(random_state: int = 42) -> dict:
+    # 1) Preparar features (X) e alvo (y)
     df = build_training_dataset()
     feature_cols = get_feature_columns(df)
 
     X = df[feature_cols].astype(float)
     y = df["success_class"]
 
+    # 2) Split estratificado: mantém proporção das 3 classes em treino e teste
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=random_state, stratify=y
     )
 
+    # 3) Random Forest: ensemble de árvores de decisão
     model = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=12,
-        min_samples_leaf=5,
-        class_weight="balanced",
+        n_estimators=200,      # número de árvores no ensemble
+        max_depth=12,          # limita profundidade para reduzir overfitting
+        min_samples_leaf=5,    # folhas precisam de ao menos 5 amostras
+        class_weight="balanced", # compensa possível desbalanceamento residual
         random_state=random_state,
-        n_jobs=-1,
+        n_jobs=-1,             # usa todos os núcleos da CPU
     )
     model.fit(X_train, y_train)
 
+    # 4) Avaliação no conjunto de teste (dados que o modelo nunca viu)
     y_pred = model.predict(X_test)
     labels = sorted(SUCCESS_LABELS.keys())
     target_names = [SUCCESS_LABELS[i] for i in labels]
@@ -50,6 +63,7 @@ def train_model(random_state: int = 42) -> dict:
         "feature_count": len(feature_cols),
     }
 
+    # feature_importances_: peso global de cada variável no modelo (usado na explicação)
     importances = sorted(
         zip(feature_cols, model.feature_importances_.tolist()),
         key=lambda x: x[1],
@@ -57,6 +71,7 @@ def train_model(random_state: int = 42) -> dict:
     )
     metrics["top_features"] = importances[:10]
 
+    # 5) Persistir artefatos para a interface e predições futuras
     dataset_path = ARTIFACTS_DIR / "training_dataset.parquet"
     save_processed_dataset(df, dataset_path)
 

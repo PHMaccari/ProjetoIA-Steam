@@ -27,6 +27,12 @@ ProjetoIA/
 └── requirements.txt
 ```
 
+## Documentos da apresentação
+
+- `ROTEIRO_APRESENTACAO.md` — estrutura dos slides e divisão da dupla
+- `SCRIPT_APRESENTACAO.md` — script de fala completo
+- Para gerar PDFs: execute `gerar_pdfs.bat` (cria `ROTEIRO_APRESENTACAO.pdf` e `SCRIPT_APRESENTACAO.pdf`)
+
 ## Pré-requisitos
 
 - Python 3.10+
@@ -129,5 +135,7 @@ O sucesso é classificado em três níveis com base em `recommendations_total`, 
 
 - A previsão reflete padrões históricos, não garante sucesso futuro
 - Marketing, qualidade do gameplay e timing de lançamento não estão nos dados
-- Jogos antigos tendem a acumular mais recomendações (viés temporal)
+- Jogos antigos tendem a acumular mais recomendações (viés temporal)  
+  
+
 

@@ -1,4 +1,11 @@
-"""Predição e explicação das decisões do modelo."""
+"""
+Predição e explicabilidade das decisões do modelo.
+
+Implementa o fluxo: Entrada → IA → Resultado → Explicação
+- Classifica o potencial de sucesso (3 classes)
+- Retorna probabilidades por classe
+- Gera gráfico e texto explicativo para apoio à decisão
+"""
 
 from __future__ import annotations
 
@@ -11,6 +18,7 @@ import pandas as pd
 from src.config import ARTIFACTS_DIR, MODELS_DIR, SUCCESS_LABELS
 
 
+# Tradução das features técnicas para rótulos amigáveis na interface
 FEATURE_LABELS_PT = {
     "price_usd": "Preço (USD)",
     "is_free": "Jogo gratuito",
@@ -42,6 +50,7 @@ FEATURE_LABELS_PT = {
 
 
 def load_model_and_config():
+    """Carrega modelo treinado e configuração salva no treinamento."""
     model_path = MODELS_DIR / "random_forest.joblib"
     config_path = ARTIFACTS_DIR / "model_config.json"
 
@@ -58,7 +67,11 @@ def load_model_and_config():
 
 
 def build_input_dataframe(user_input: dict, feature_columns: list[str]) -> pd.DataFrame:
-    """Converte entrada do formulário em DataFrame alinhado ao treino."""
+    """
+    Converte o dicionário do formulário Streamlit em DataFrame no formato do treino.
+
+    Inicia todas as colunas em 0 e ativa (1) apenas gêneros/categorias selecionados.
+    """
     row = {col: 0 for col in feature_columns}
 
     row["price_usd"] = float(user_input.get("price_usd", 0))
@@ -93,6 +106,11 @@ def build_input_dataframe(user_input: dict, feature_columns: list[str]) -> pd.Da
 
 
 def predict_success(user_input: dict) -> dict:
+    """
+    Executa predição completa com explicabilidade.
+
+    Retorna: classe, probabilidades, detalhes das features e texto explicativo.
+    """
     model, config = load_model_and_config()
     feature_columns = config["feature_columns"]
 
@@ -100,6 +118,7 @@ def predict_success(user_input: dict) -> dict:
     pred_class = int(model.predict(X)[0])
     proba = model.predict_proba(X)[0]
 
+    # Explicabilidade: combina importância global × valor da entrada nesta simulação
     importances = model.feature_importances_
     input_values = X.iloc[0].values
     contribution = importances * np.abs(input_values - input_values.mean())
@@ -132,6 +151,11 @@ def predict_success(user_input: dict) -> dict:
 
 
 def build_text_explanation(user_input: dict, pred_class: int, features: list[dict]) -> str:
+    """
+    Gera explicação em linguagem natural a partir de regras simples + top features.
+
+    Camada complementar ao gráfico: traduz o resultado para o desenvolvedor indie.
+    """
     label = SUCCESS_LABELS[pred_class]
     positives = []
     negatives = []

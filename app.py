@@ -1,4 +1,13 @@
-"""Interface Streamlit — Previsão de Sucesso de Jogos na Steam."""
+"""
+Interface Streamlit — Previsão de Sucesso de Jogos na Steam.
+
+Telas:
+  1. Dashboard  — visão geral do dataset e métricas do modelo
+  2. Simulação   — formulário de entrada (features pré-lançamento)
+  3. Resultado   — classificação, probabilidades e explicação da IA
+
+Fluxo do projeto: Entrada → IA → Resultado → Explicação
+"""
 
 from __future__ import annotations
 
@@ -33,6 +42,7 @@ st.markdown(
 
 @st.cache_data(show_spinner="Carregando dataset...")
 def load_dashboard_data() -> pd.DataFrame:
+    """Carrega parquet processado; se não existir, gera via ETL."""
     parquet = ARTIFACTS_DIR / "training_dataset.parquet"
     if parquet.exists():
         return pd.read_parquet(parquet)
@@ -46,6 +56,7 @@ def load_dashboard_data() -> pd.DataFrame:
 
 @st.cache_data
 def load_model_metrics() -> dict:
+    """Lê acurácia e demais métricas salvas em artifacts/model_config.json."""
     config_path = ARTIFACTS_DIR / "model_config.json"
     if config_path.exists():
         with open(config_path, encoding="utf-8") as f:
@@ -54,6 +65,7 @@ def load_model_metrics() -> dict:
 
 
 def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
+    """Tela 1: KPIs e gráficos exploratórios do dataset de treino."""
     st.markdown('<p class="main-header">Dashboard — Steam Dataset</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="sub-header">Visão geral dos jogos analisados e distribuição de sucesso</p>',
@@ -83,7 +95,7 @@ def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
             color_continuous_scale="Blues",
         )
         fig_genres.update_layout(showlegend=False, coloraxis_showscale=False)
-        st.plotly_chart(fig_genres, use_container_width=True)
+        st.plotly_chart(fig_genres, width="stretch")
 
     with col_b:
         success_counts = (
@@ -105,7 +117,7 @@ def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
                 "Alto potencial": SUCCESS_COLORS[2],
             },
         )
-        st.plotly_chart(fig_success, use_container_width=True)
+        st.plotly_chart(fig_success, width="stretch")
 
     col_c, col_d = st.columns(2)
     with col_c:
@@ -116,7 +128,7 @@ def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
             title="Distribuição de preços (USD)",
             labels={"price_usd": "Preço"},
         )
-        st.plotly_chart(fig_price, use_container_width=True)
+        st.plotly_chart(fig_price, width="stretch")
 
     with col_d:
         fig_rec = px.histogram(
@@ -126,10 +138,16 @@ def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
             title="Distribuição de recomendações",
             labels={"recommendations_total": "Recomendações"},
         )
-        st.plotly_chart(fig_rec, use_container_width=True)
+        st.plotly_chart(fig_rec, width="stretch")
 
 
 def render_simulation() -> dict | None:
+    """
+    Tela 2: formulário de simulação.
+
+    Coleta apenas informações que o desenvolvedor conhece antes do lançamento.
+    Retorna dict compatível com predict_success() ou None se não enviado.
+    """
     st.markdown('<p class="main-header">Simulação — Prever Sucesso</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="sub-header">Preencha as características do jogo para obter a previsão</p>',
@@ -175,7 +193,7 @@ def render_simulation() -> dict | None:
             supports_mac = st.checkbox("Mac", value=False)
             supports_linux = st.checkbox("Linux", value=False)
 
-        submitted = st.form_submit_button("Prever sucesso", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Prever sucesso", type="primary", width="stretch")
 
     if submitted:
         return {
@@ -201,6 +219,7 @@ def render_simulation() -> dict | None:
 
 
 def render_result(result: dict) -> None:
+    """Tela 3: exibe classificação, probabilidades, gráfico e texto explicativo."""
     st.markdown('<p class="main-header">Resultado da Previsão</p>', unsafe_allow_html=True)
 
     class_id = result["class_id"]
@@ -244,7 +263,7 @@ def render_result(result: dict) -> None:
             color_continuous_scale="Viridis",
         )
         fig.update_layout(yaxis={"categoryorder": "total ascending"}, coloraxis_showscale=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         fig_prob = px.bar(
             prob_df,
@@ -258,10 +277,11 @@ def render_result(result: dict) -> None:
                 "Alto potencial": SUCCESS_COLORS[2],
             },
         )
-        st.plotly_chart(fig_prob, use_container_width=True)
+        st.plotly_chart(fig_prob, width="stretch")
 
 
 def main() -> None:
+    """Roteador principal: sidebar escolhe a tela ativa."""
     st.sidebar.title("Steam Success Predictor")
     st.sidebar.markdown("**Projeto Final — IA Aplicada**")
     st.sidebar.markdown("Previsão de sucesso de jogos na Steam com Random Forest.")
@@ -277,7 +297,7 @@ def main() -> None:
         st.sidebar.warning("Modelo não treinado. Execute: `python -m src.train`")
 
     if "prediction_result" not in st.session_state:
-        st.session_state.prediction_result = None
+        st.session_state.prediction_result = None  # guarda última simulação entre telas
 
     if page == "Dashboard":
         try:
@@ -292,6 +312,7 @@ def main() -> None:
         user_input = render_simulation()
         if user_input:
             try:
+                # Chama src.predict: formulário → modelo → explicação
                 st.session_state.prediction_result = predict_success(user_input)
                 st.success("Previsão concluída! Veja a aba **Resultado**.")
             except FileNotFoundError:
