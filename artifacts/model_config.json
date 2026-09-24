@@ -27,57 +27,111 @@
     "cat_coop"
   ],
   "success_labels": {
-    "0": "Baixo potencial",
-    "1": "Médio potencial",
-    "2": "Alto potencial"
+    "0": "Baixo engajamento",
+    "1": "Médio engajamento",
+    "2": "Alto engajamento"
   },
   "metrics": {
-    "accuracy": 0.561,
-    "f1_macro": 0.5607527524458343,
     "train_size": 24000,
     "test_size": 6000,
     "feature_count": 25,
+    "classification": {
+      "logistic_regression": {
+        "accuracy": 0.49516666666666664,
+        "f1_macro": 0.4933776303865494,
+        "best_params": {
+          "clf__C": 10.0
+        }
+      },
+      "knn": {
+        "accuracy": 0.49133333333333334,
+        "f1_macro": 0.49122042950734296,
+        "best_params": {
+          "clf__n_neighbors": 31
+        }
+      },
+      "random_forest": {
+        "accuracy": 0.5358333333333334,
+        "f1_macro": 0.5333627356254235
+      },
+      "best_model": "random_forest"
+    },
+    "regression": {
+      "dummy_median": {
+        "mae": 838.3588333333333,
+        "rmse": 10217.29616628098,
+        "r2": -0.006778315469232243
+      },
+      "linear_simple": {
+        "mae": 12548.810963959733,
+        "rmse": 831039.4930444806,
+        "r2": -6659.475179749369
+      },
+      "linear_multiple": {
+        "mae": 905.9382753951444,
+        "rmse": 10925.807862889234,
+        "r2": -0.15124831092215585
+      },
+      "polynomial": {
+        "mae": 1100.9607485480944,
+        "rmse": 20520.049663305803,
+        "r2": -3.06086641469121
+      },
+      "random_forest_regressor": {
+        "mae": 792.8456239997067,
+        "rmse": 9993.42377779026,
+        "r2": 0.03685761139200927
+      },
+      "best_model": "random_forest_regressor",
+      "target_transform": "log1p no treino; métricas na escala original"
+    },
+    "kmeans": {
+      "k": 4,
+      "silhouette": 0.13117801389790432
+    },
     "top_features": [
       [
         "price_usd",
-        0.1772426788464231
-      ],
-      [
-        "publisher_tier",
-        0.16275472661958007
+        0.20080875449732472
       ],
       [
         "release_year",
-        0.09834603244349414
+        0.11754075341971404
       ],
       [
         "is_free",
-        0.09571484928124431
+        0.11169490347285771
       ],
       [
         "achievement_count",
-        0.08808964072927289
+        0.10226330949570749
       ],
       [
         "num_languages",
-        0.07669899786963193
+        0.09051280684697981
       ],
       [
         "num_categories",
-        0.07309934665861266
+        0.08443757622187051
       ],
       [
         "release_month",
-        0.04581678587957619
+        0.0509337208785274
+      ],
+      [
+        "publisher_tier",
+        0.035419875955093896
       ],
       [
         "cat_achievements",
-        0.0206242118333289
+        0.022556057166983737
       ],
       [
         "genre_casual",
-        0.018410105693425976
+        0.020784405498627322
       ]
-    ]
+    ],
+    "accuracy": 0.5358333333333334,
+    "f1_macro": 0.5333627356254235
   }
 }

@@ -43,11 +43,11 @@ CATEGORY_IDS = {
 MIN_RELEASE_YEAR = 2010
 SAMPLE_SIZE = 30_000  # amostra estratificada para treino mais rápido
 
-# Classes de saída do modelo (variável-alvo derivada de recommendations)
+# Classes de saída: perfil de engajamento (tercis de recommendations)
 SUCCESS_LABELS = {
-    0: "Baixo potencial",
-    1: "Médio potencial",
-    2: "Alto potencial",
+    0: "Baixo engajamento",
+    1: "Médio engajamento",
+    2: "Alto engajamento",
 }
 
 # Cores usadas na interface para cada classe de sucesso

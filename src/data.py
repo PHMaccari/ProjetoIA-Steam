@@ -5,7 +5,8 @@ Responsabilidades:
 - Ler e limpar o CSV único
 - Converter colunas em lista (genres, categories, publishers)
 - Criar features numéricas conhecidas antes do lançamento
-- Definir a variável-alvo (success_class) sem vazamento de dados
+- Definir alvos: engagement_class (classificação) e recommendations_total (regressão)
+- Não usar recomendações como feature (evita vazamento)
 """
 
 from __future__ import annotations
@@ -101,36 +102,26 @@ def build_genre_flags(genres_series: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def build_publisher_tier(publishers_series: pd.Series, recommendations: pd.Series) -> pd.DataFrame:
+def build_publisher_tier(publishers_series: pd.Series) -> pd.DataFrame:
     """
-    Classifica publishers em 3 tiers (0, 1, 2) pela média histórica de recomendações.
+    Classifica publishers em 3 tiers (0, 1, 2) pelo tamanho do catálogo.
 
-    Tier 0 = indie/desconhecido | 1 = médio | 2 = estabelecido/AAA
+    Usa a quantidade de jogos publicados — não recomendações — para evitar
+    vazamento do alvo. Tier 0 = catálogo pequeno | 1 = médio | 2 = grande.
     Jogos com múltiplos publishers recebem o tier mais alto entre eles.
     """
     pub_rows = []
     for appid, raw in publishers_series.items():
         for publisher in parse_list_field(raw):
-            pub_rows.append(
-                {
-                    "appid": appid,
-                    "publisher": publisher,
-                    "recommendations_total": recommendations.loc[appid],
-                }
-            )
+            pub_rows.append({"appid": appid, "publisher": publisher})
 
     if not pub_rows:
         return pd.DataFrame({"appid": publishers_series.index, "publisher_tier": 0})
 
     pub_apps = pd.DataFrame(pub_rows)
-    pub_stats = (
-        pub_apps.groupby("publisher")["recommendations_total"]
-        .agg(["mean", "count"])
-        .reset_index()
-    )
-    # qcut divide publishers em tercis pela média de recomendações
+    pub_stats = pub_apps.groupby("publisher").size().rename("count").reset_index()
     pub_stats["publisher_tier"] = pd.qcut(
-        pub_stats["mean"].rank(method="first"),
+        pub_stats["count"].rank(method="first"),
         q=3,
         labels=[0, 1, 2],
     ).astype(int)
@@ -178,21 +169,17 @@ def load_raw_applications() -> pd.DataFrame:
 
 def build_training_dataset(sample_size: int | None = SAMPLE_SIZE) -> pd.DataFrame:
     """
-    Pipeline completo: limpeza → flags → merge → variável-alvo → amostragem.
+    Pipeline completo: limpeza → flags → merge → alvos → amostragem.
 
-    IMPORTANTE: recommendations_total entra só como alvo (success_class),
-    nunca como feature — evita vazamento de dados (data leakage).
+    IMPORTANTE: recommendations_total entra só como alvo (classificação e
+    regressão), nunca como feature — evita vazamento de dados.
     """
     apps = load_raw_applications()
     apps_indexed = apps.set_index("appid")
 
-    # Feature engineering por tipo de informação
     genre_flags = build_genre_flags(apps_indexed["genres"])
     category_flags = build_category_flags(apps_indexed["categories"])
-    publisher_tier = build_publisher_tier(
-        apps_indexed["publishers"],
-        apps_indexed["recommendations_total"],
-    )
+    publisher_tier = build_publisher_tier(apps_indexed["publishers"])
 
     df = apps.merge(genre_flags, on="appid", how="left")
     df = df.merge(category_flags, on="appid", how="left")
@@ -207,6 +194,7 @@ def build_training_dataset(sample_size: int | None = SAMPLE_SIZE) -> pd.DataFram
     ).astype(int)
 
     df["success_class"] = create_success_target(df["recommendations_total"])
+    df["engagement_class"] = df["success_class"]
 
     # Amostra estratificada: ~10 mil jogos por classe (total ~30 mil)
     if sample_size and len(df) > sample_size:

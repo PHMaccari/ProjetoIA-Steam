@@ -15,6 +15,11 @@ if not defined PYTHON (
         set "PYTHON=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
     )
 )
+if not defined PYTHON (
+    if exist "%~dp0.pyruntime\python.exe" (
+        set "PYTHON=%~dp0.pyruntime\python.exe"
+    )
+)
 
 if not defined PYTHON (
     echo Python 3 nao encontrado.

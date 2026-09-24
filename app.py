@@ -1,29 +1,25 @@
 """
-Interface Streamlit — Previsão de Sucesso de Jogos na Steam.
+Interface Streamlit — Perfil de engajamento e popularidade na Steam.
 
 Telas:
-  1. Dashboard  — visão geral do dataset e métricas do modelo
-  2. Simulação   — formulário de entrada (features pré-lançamento)
-  3. Resultado   — classificação, probabilidades e explicação da IA
-
-Fluxo do projeto: Entrada → IA → Resultado → Explicação
+  1. Dashboard  — dataset, classificação e regressão
+  2. Simulação  — características conhecidas antes do lançamento
+  3. Resultado  — classe de engajamento, recomendações estimadas e explicação
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
 from src.config import ARTIFACTS_DIR, DATA_FILE, MAIN_GENRE_IDS, SUCCESS_COLORS, SUCCESS_LABELS
 from src.predict import predict_success
 
 st.set_page_config(
-    page_title="Steam Success Predictor",
+    page_title="Steam — Engajamento e Popularidade",
     page_icon="🎮",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -39,10 +35,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+CLS_NAMES = {
+    "logistic_regression": "Regressão Logística (A)",
+    "knn": "KNN (B)",
+    "random_forest": "Random Forest",
+}
+REG_NAMES = {
+    "dummy_median": "Baseline (mediana)",
+    "linear_simple": "Linear simples",
+    "linear_multiple": "Linear múltipla",
+    "polynomial": "Polinomial + Ridge",
+    "random_forest_regressor": "Random Forest Regressor",
+}
+
 
 @st.cache_data(show_spinner="Carregando dataset...")
 def load_dashboard_data() -> pd.DataFrame:
-    """Carrega parquet processado; se não existir, gera via ETL."""
     parquet = ARTIFACTS_DIR / "training_dataset.parquet"
     if parquet.exists():
         return pd.read_parquet(parquet)
@@ -56,7 +64,6 @@ def load_dashboard_data() -> pd.DataFrame:
 
 @st.cache_data
 def load_model_metrics() -> dict:
-    """Lê acurácia e demais métricas salvas em artifacts/model_config.json."""
     config_path = ARTIFACTS_DIR / "model_config.json"
     if config_path.exists():
         with open(config_path, encoding="utf-8") as f:
@@ -64,25 +71,40 @@ def load_model_metrics() -> dict:
     return {}
 
 
+def _pie_color_map() -> dict[str, str]:
+    return {SUCCESS_LABELS[k]: SUCCESS_COLORS[k] for k in SUCCESS_LABELS}
+
+
 def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
-    """Tela 1: KPIs e gráficos exploratórios do dataset de treino."""
-    st.markdown('<p class="main-header">Dashboard — Steam Dataset</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Dashboard — Engajamento e popularidade</p>', unsafe_allow_html=True)
     st.markdown(
-        '<p class="sub-header">Visão geral dos jogos analisados e distribuição de sucesso</p>',
+        '<p class="sub-header">Classificação do perfil de engajamento e regressão da quantidade de recomendações</p>',
         unsafe_allow_html=True,
     )
+
+    cls_metrics = metrics.get("classification", {})
+    reg_metrics = metrics.get("regression", {})
+    best_cls = cls_metrics.get("best_model", "random_forest")
+    best_reg = reg_metrics.get("best_model", "random_forest_regressor")
+    best_cls_acc = cls_metrics.get(best_cls, {}).get("accuracy", metrics.get("accuracy", 0))
+    best_reg_mae = reg_metrics.get(best_reg, {}).get("mae")
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Jogos no dataset", f"{len(df):,}")
     c2.metric("Preço médio (USD)", f"${df['price_usd'].mean():.2f}")
-    c3.metric("Idiomas médios", f"{df['num_languages'].mean():.1f}")
-    if metrics:
-        c4.metric("Acurácia do modelo", f"{metrics.get('accuracy', 0):.1%}")
+    c3.metric(
+        "Acurácia (melhor classificador)",
+        f"{best_cls_acc:.1%}",
+        help=CLS_NAMES.get(best_cls, best_cls),
+    )
+    if best_reg_mae is not None:
+        c4.metric("MAE da regressão", f"{best_reg_mae:,.0f} rec.")
     else:
         c4.metric("Modelo", "Não treinado")
 
-    col_a, col_b = st.columns(2)
+    class_col = "engagement_class" if "engagement_class" in df.columns else "success_class"
 
+    col_a, col_b = st.columns(2)
     with col_a:
         genre_cols = [c for c in df.columns if c.startswith("genre_")]
         genre_counts = {c.replace("genre_", "").title(): int(df[c].sum()) for c in genre_cols}
@@ -98,24 +120,15 @@ def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
         st.plotly_chart(fig_genres, width="stretch")
 
     with col_b:
-        success_counts = (
-            df["success_class"]
-            .map(SUCCESS_LABELS)
-            .value_counts()
-            .reset_index()
-        )
+        success_counts = df[class_col].map(SUCCESS_LABELS).value_counts().reset_index()
         success_counts.columns = ["Classe", "Quantidade"]
         fig_success = px.pie(
             success_counts,
             names="Classe",
             values="Quantidade",
-            title="Distribuição de potencial de sucesso",
+            title="Distribuição do perfil de engajamento",
             color="Classe",
-            color_discrete_map={
-                "Baixo potencial": SUCCESS_COLORS[0],
-                "Médio potencial": SUCCESS_COLORS[1],
-                "Alto potencial": SUCCESS_COLORS[2],
-            },
+            color_discrete_map=_pie_color_map(),
         )
         st.plotly_chart(fig_success, width="stretch")
 
@@ -135,22 +148,78 @@ def render_dashboard(df: pd.DataFrame, metrics: dict) -> None:
             df,
             x="recommendations_total",
             nbins=40,
-            title="Distribuição de recomendações",
+            title="Distribuição de recomendações (alvo da regressão)",
             labels={"recommendations_total": "Recomendações"},
         )
         st.plotly_chart(fig_rec, width="stretch")
 
+    st.subheader("Comparação dos modelos")
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        st.caption("Classificação (conjunto de teste)")
+        if cls_metrics:
+            rows = []
+            for key, label in CLS_NAMES.items():
+                item = cls_metrics.get(key, {})
+                if not item:
+                    continue
+                rows.append(
+                    {
+                        "Modelo": label,
+                        "Accuracy": item.get("accuracy"),
+                        "F1 macro": item.get("f1_macro"),
+                    }
+                )
+            table = pd.DataFrame(rows)
+            st.dataframe(
+                table,
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "Accuracy": st.column_config.NumberColumn(format="%.3f"),
+                    "F1 macro": st.column_config.NumberColumn(format="%.3f"),
+                },
+            )
+            st.caption(f"Melhor classificador: **{CLS_NAMES.get(best_cls, best_cls)}**")
+        else:
+            st.info("Treine o pipeline para ver as métricas de classificação.")
+
+    with col_m2:
+        st.caption("Regressão de recomendações (escala original)")
+        if reg_metrics:
+            rows = []
+            for key, label in REG_NAMES.items():
+                item = reg_metrics.get(key, {})
+                if not isinstance(item, dict) or "mae" not in item:
+                    continue
+                rows.append(
+                    {
+                        "Modelo": label,
+                        "MAE": item.get("mae"),
+                        "RMSE": item.get("rmse"),
+                        "R²": item.get("r2"),
+                    }
+                )
+            table = pd.DataFrame(rows)
+            st.dataframe(
+                table,
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "MAE": st.column_config.NumberColumn(format="%.0f"),
+                    "RMSE": st.column_config.NumberColumn(format="%.0f"),
+                    "R²": st.column_config.NumberColumn(format="%.3f"),
+                },
+            )
+            st.caption(f"Melhor regressor (menor MAE): **{REG_NAMES.get(best_reg, best_reg)}**")
+        else:
+            st.info("Treine o pipeline para ver as métricas de regressão.")
+
 
 def render_simulation() -> dict | None:
-    """
-    Tela 2: formulário de simulação.
-
-    Coleta apenas informações que o desenvolvedor conhece antes do lançamento.
-    Retorna dict compatível com predict_success() ou None se não enviado.
-    """
-    st.markdown('<p class="main-header">Simulação — Prever Sucesso</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Simulação — Engajamento e popularidade</p>', unsafe_allow_html=True)
     st.markdown(
-        '<p class="sub-header">Preencha as características do jogo para obter a previsão</p>',
+        '<p class="sub-header">Informe as características do jogo (conhecidas antes do lançamento)</p>',
         unsafe_allow_html=True,
     )
 
@@ -180,9 +249,9 @@ def render_simulation() -> dict | None:
             release_year = st.number_input("Ano de lançamento", 2010, 2026, 2024)
             release_month = st.slider("Mês de lançamento", 1, 12, 6)
             publisher_tier = st.selectbox(
-                "Tier do publisher",
+                "Tier do publisher (pelo tamanho do catálogo)",
                 options=[0, 1, 2],
-                format_func=lambda x: ["Indie/desconhecido", "Médio", "Estabelecido/AAA"][x],
+                format_func=lambda x: ["Pequeno", "Médio", "Grande"][x],
             )
             multiplayer = st.checkbox("Multiplayer", value=False)
             singleplayer = st.checkbox("Single-player", value=True)
@@ -193,7 +262,11 @@ def render_simulation() -> dict | None:
             supports_mac = st.checkbox("Mac", value=False)
             supports_linux = st.checkbox("Linux", value=False)
 
-        submitted = st.form_submit_button("Prever sucesso", type="primary", width="stretch")
+        submitted = st.form_submit_button(
+            "Prever engajamento e popularidade",
+            type="primary",
+            width="stretch",
+        )
 
     if submitted:
         return {
@@ -219,11 +292,11 @@ def render_simulation() -> dict | None:
 
 
 def render_result(result: dict) -> None:
-    """Tela 3: exibe classificação, probabilidades, gráfico e texto explicativo."""
-    st.markdown('<p class="main-header">Resultado da Previsão</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Resultado da previsão</p>', unsafe_allow_html=True)
 
     class_id = result["class_id"]
     color = SUCCESS_COLORS[class_id]
+    rec_pred = result.get("recommendations_pred")
 
     st.markdown(
         f"""
@@ -235,18 +308,24 @@ def render_result(result: dict) -> None:
         unsafe_allow_html=True,
     )
 
+    if rec_pred is not None:
+        st.metric("Popularidade estimada", f"{rec_pred:,.0f} recomendações")
+
     prob_df = pd.DataFrame(
-        {"Classe": list(result["probabilities"].keys()), "Probabilidade": list(result["probabilities"].values())}
+        {
+            "Classe": list(result["probabilities"].keys()),
+            "Probabilidade": list(result["probabilities"].values()),
+        }
     )
 
     col1, col2 = st.columns([1, 1.2])
 
     with col1:
-        st.subheader("Probabilidades")
+        st.subheader("Probabilidades do classificador")
         for label, prob in result["probabilities"].items():
             st.progress(prob, text=f"{label}: {prob:.1%}")
 
-        st.subheader("Explicação da IA")
+        st.subheader("Explicação")
         st.markdown(result["explanation"])
 
     with col2:
@@ -257,7 +336,7 @@ def render_result(result: dict) -> None:
             x="contribution",
             y="label",
             orientation="h",
-            title="Fatores que mais influenciaram a decisão",
+            title="Fatores que mais influenciaram a classificação",
             labels={"contribution": "Contribuição", "label": "Variável"},
             color="contribution",
             color_continuous_scale="Viridis",
@@ -271,20 +350,17 @@ def render_result(result: dict) -> None:
             y="Probabilidade",
             color="Classe",
             title="Distribuição de probabilidades",
-            color_discrete_map={
-                "Baixo potencial": SUCCESS_COLORS[0],
-                "Médio potencial": SUCCESS_COLORS[1],
-                "Alto potencial": SUCCESS_COLORS[2],
-            },
+            color_discrete_map=_pie_color_map(),
         )
         st.plotly_chart(fig_prob, width="stretch")
 
 
 def main() -> None:
-    """Roteador principal: sidebar escolhe a tela ativa."""
-    st.sidebar.title("Steam Success Predictor")
-    st.sidebar.markdown("**Projeto Final — IA Aplicada**")
-    st.sidebar.markdown("Previsão de sucesso de jogos na Steam com Random Forest.")
+    st.sidebar.title("Steam Engajamento")
+    st.sidebar.markdown("**Machine Learning**")
+    st.sidebar.markdown(
+        "Classificação do perfil de engajamento e regressão da popularidade (recomendações)."
+    )
 
     page = st.sidebar.radio(
         "Navegação",
@@ -292,12 +368,11 @@ def main() -> None:
         index=0,
     )
 
-    model_exists = (ARTIFACTS_DIR / "model_config.json").exists()
-    if not model_exists:
+    if not (ARTIFACTS_DIR / "model_config.json").exists():
         st.sidebar.warning("Modelo não treinado. Execute: `python -m src.train`")
 
     if "prediction_result" not in st.session_state:
-        st.session_state.prediction_result = None  # guarda última simulação entre telas
+        st.session_state.prediction_result = None
 
     if page == "Dashboard":
         try:
@@ -312,7 +387,6 @@ def main() -> None:
         user_input = render_simulation()
         if user_input:
             try:
-                # Chama src.predict: formulário → modelo → explicação
                 st.session_state.prediction_result = predict_success(user_input)
                 st.success("Previsão concluída! Veja a aba **Resultado**.")
             except FileNotFoundError:

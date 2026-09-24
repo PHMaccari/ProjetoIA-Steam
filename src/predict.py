@@ -1,10 +1,9 @@
 """
-Predição e explicabilidade das decisões do modelo.
+Predição e explicabilidade — perfil de engajamento + popularidade.
 
-Implementa o fluxo: Entrada → IA → Resultado → Explicação
-- Classifica o potencial de sucesso (3 classes)
-- Retorna probabilidades por classe
-- Gera gráfico e texto explicativo para apoio à decisão
+- Classifica o engajamento (3 classes)
+- Estima recomendações esperadas (regressão)
+- Gera texto explicativo para apoio à decisão
 """
 
 from __future__ import annotations
@@ -18,7 +17,6 @@ import pandas as pd
 from src.config import ARTIFACTS_DIR, MODELS_DIR, SUCCESS_LABELS
 
 
-# Tradução das features técnicas para rótulos amigáveis na interface
 FEATURE_LABELS_PT = {
     "price_usd": "Preço (USD)",
     "is_free": "Jogo gratuito",
@@ -50,28 +48,24 @@ FEATURE_LABELS_PT = {
 
 
 def load_model_and_config():
-    """Carrega modelo treinado e configuração salva no treinamento."""
-    model_path = MODELS_DIR / "random_forest.joblib"
+    """Carrega classificador, regressor e configuração salva no treinamento."""
+    clf_path = MODELS_DIR / "random_forest.joblib"
+    reg_path = MODELS_DIR / "random_forest_regressor.joblib"
     config_path = ARTIFACTS_DIR / "model_config.json"
 
-    if not model_path.exists() or not config_path.exists():
-        raise FileNotFoundError(
-            "Modelo não encontrado. Execute: python -m src.train"
-        )
+    if not clf_path.exists() or not config_path.exists():
+        raise FileNotFoundError("Modelo não encontrado. Execute: python -m src.train")
 
-    model = joblib.load(model_path)
+    classifier = joblib.load(clf_path)
+    regressor = joblib.load(reg_path) if reg_path.exists() else None
     with open(config_path, encoding="utf-8") as f:
         config = json.load(f)
 
-    return model, config
+    return classifier, regressor, config
 
 
 def build_input_dataframe(user_input: dict, feature_columns: list[str]) -> pd.DataFrame:
-    """
-    Converte o dicionário do formulário Streamlit em DataFrame no formato do treino.
-
-    Inicia todas as colunas em 0 e ativa (1) apenas gêneros/categorias selecionados.
-    """
+    """Converte o formulário Streamlit em DataFrame no formato do treino."""
     row = {col: 0 for col in feature_columns}
 
     row["price_usd"] = float(user_input.get("price_usd", 0))
@@ -105,21 +99,20 @@ def build_input_dataframe(user_input: dict, feature_columns: list[str]) -> pd.Da
     return pd.DataFrame([row])[feature_columns].astype(float)
 
 
-def predict_success(user_input: dict) -> dict:
-    """
-    Executa predição completa com explicabilidade.
-
-    Retorna: classe, probabilidades, detalhes das features e texto explicativo.
-    """
-    model, config = load_model_and_config()
+def predict_engagement(user_input: dict) -> dict:
+    """Classifica o engajamento e estima recomendações esperadas."""
+    classifier, regressor, config = load_model_and_config()
     feature_columns = config["feature_columns"]
 
     X = build_input_dataframe(user_input, feature_columns)
-    pred_class = int(model.predict(X)[0])
-    proba = model.predict_proba(X)[0]
+    pred_class = int(classifier.predict(X)[0])
+    proba = classifier.predict_proba(X)[0]
 
-    # Explicabilidade: combina importância global × valor da entrada nesta simulação
-    importances = model.feature_importances_
+    rec_pred = None
+    if regressor is not None:
+        rec_pred = float(np.clip(np.expm1(regressor.predict(X)[0]), 0, None))
+
+    importances = classifier.feature_importances_
     input_values = X.iloc[0].values
     contribution = importances * np.abs(input_values - input_values.mean())
     top_idx = np.argsort(contribution)[::-1][:8]
@@ -137,25 +130,30 @@ def predict_success(user_input: dict) -> dict:
             }
         )
 
-    explanation = build_text_explanation(user_input, pred_class, feature_details)
+    explanation = build_text_explanation(user_input, pred_class, rec_pred, feature_details)
 
     return {
         "class_id": pred_class,
         "class_label": SUCCESS_LABELS[pred_class],
-        "probabilities": {
-            SUCCESS_LABELS[i]: float(proba[i]) for i in range(len(proba))
-        },
+        "probabilities": {SUCCESS_LABELS[i]: float(proba[i]) for i in range(len(proba))},
+        "recommendations_pred": rec_pred,
         "feature_details": feature_details,
         "explanation": explanation,
     }
 
 
-def build_text_explanation(user_input: dict, pred_class: int, features: list[dict]) -> str:
-    """
-    Gera explicação em linguagem natural a partir de regras simples + top features.
+def predict_success(user_input: dict) -> dict:
+    """Alias mantido para compatibilidade com a interface."""
+    return predict_engagement(user_input)
 
-    Camada complementar ao gráfico: traduz o resultado para o desenvolvedor indie.
-    """
+
+def build_text_explanation(
+    user_input: dict,
+    pred_class: int,
+    rec_pred: float | None,
+    features: list[dict],
+) -> str:
+    """Explicação em linguagem natural a partir das top features e da regressão."""
     label = SUCCESS_LABELS[pred_class]
     positives = []
     negatives = []
@@ -179,20 +177,24 @@ def build_text_explanation(user_input: dict, pred_class: int, features: list[dic
         positives.append("posicionamento indie")
 
     if user_input.get("publisher_tier", 0) == 0:
-        negatives.append("publisher com histórico modesto")
+        negatives.append("publisher com catálogo pequeno")
     if user_input.get("num_categories", 0) < 3:
         negatives.append("poucas tags/categorias na página")
 
     top_feats = [f["label"] for f in features[:3]]
     feat_text = ", ".join(top_feats)
-
     pos_text = ", ".join(positives) if positives else "poucos indicadores positivos claros"
     neg_text = ", ".join(negatives) if negatives else "nenhum fator negativo dominante"
 
+    rec_text = ""
+    if rec_pred is not None:
+        rec_text = f" A popularidade estimada é de cerca de **{rec_pred:,.0f} recomendações**. "
+
     return (
-        f"O modelo classificou o jogo como **{label}**. "
+        f"O classificador atribuiu o perfil **{label}**."
+        f"{rec_text}"
         f"Os fatores mais influentes foram: {feat_text}. "
-        f"Pontos positivos identificados: {pos_text}. "
+        f"Pontos positivos: {pos_text}. "
         f"Pontos de atenção: {neg_text}. "
-        f"Esta previsão reflete padrões históricos da Steam e não garante resultados futuros."
+        f"A previsão reflete padrões históricos da Steam e não garante resultados futuros."
     )
